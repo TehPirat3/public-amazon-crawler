@@ -1,5 +1,5 @@
 from models import ProductRecord
-from helpers import make_request, log, format_url, enqueue_url, dequeue_url
+from helpers import make_request, log, enqueue_url, dequeue_url
 from extractors import get_title, get_url, get_price, get_primary_img
 from datetime import datetime
 import eventlet
