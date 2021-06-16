@@ -34,17 +34,10 @@ proxies = [
     # your list of proxy IP addresses goes here
     # check out https://proxybonanza.com/?aff_id=629
     # for a quick, easy-to-use proxy service
-    "196.17.78.233",
-    "196.17.76.82",
-    "196.17.77.68",
-    "196.17.77.9",
-    "196.17.76.116",
-    "196.17.76.246",
-    "196.17.79.174",
-    "196.17.76.215",
+  
 ]
-proxy_user = "9cJQt1"
-proxy_pass = "ted3mo"
+proxy_user = 
+proxy_pass = 
 proxy_port = "8000"
 
 # Crawling Logic
