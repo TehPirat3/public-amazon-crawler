@@ -14,52 +14,63 @@ pile = eventlet.GreenPile(pool)
 
 
 def begin_crawl():
+    # explode out all of our category start_urls into subcategories
     with open(settings.start_file, "r") as f:
         for line in f:
             line = line.strip()
             if not line or line.startswith("#"):
-                continue
+                continue  # skip blank and commented out lines
             page, html = make_request(line)
             count = 0
             subcategories = page.findAll(
-                "div", "bxc-grid__container bxc-grid__container--width-1500"
-            )
-
+                "a", "a-link-normal acs_tile__title-image aok-block a-text-normal"
+            )  # downward arrow graphics
+            a = 0
             for subcategory in subcategories:
-                all_a = subcategory.find_all("a")
-                for a_tag in all_a:
-                    try:
-                        link = a_tag["href"]
-                        count += 1
-                        enqueue_url(link)
-                        break
-                    except:
-                        continue
+                # if a==2:
+                #     i = subcategory.find_all("a")
+                #     b = 0
+                #     for link in i:
+                #         if not link:
+                #             continue
+                #         print("====",b,link["href"])
+                #
+                #         link = link["href"]
+                #         count += 1
+                #         b += 1
+                link = subcategory["href"]
+                # print(f'https://www.amazon.com{link}')
+                enqueue_url(link)
+                a += 1
             log("Found {} subcategories on {}".format(count, line))
 
 
+k = 0
+
+
 def fetch_listing():
+    global k
     global crawl_time
+    crawl_time = datetime.now()
     url = dequeue_url()
+    # print(k,url)
+    k += 1
     if not url:
         log("WARNING: No URLs found in the queue. Retrying...")
         pile.spawn(fetch_listing)
         return
-
     try:
         page, html = make_request(url)
+        # print("mtav")
         item_list = page.find(
             "div", "s-main-slot s-result-list s-search-results sg-row"
         )
-
         items = item_list.find_all(
             "div",
             "sg-col-4-of-12 s-result-item s-asin sg-col-4-of-16 sg-col sg-col-4-of-20",
         )
-
         log("Found {} items on {}".format(len(items), url))
         for item in items[: settings.max_details_per_listing]:
-
             product_image = get_primary_img(item)
             if not product_image:
                 log("No product image detected, skipping")
@@ -67,28 +78,28 @@ def fetch_listing():
             product_title = get_title(item)
             product_url = get_url(item)
             product_price = get_price(item)
+            # print("+=========++++++++++++++++++++++++++++++++++++++++++++++++++a")
             product = ProductRecord(
                 title=product_title,
                 product_url=product_url,
                 listing_url=url,
                 price=product_price,
                 primary_img=product_image,
-                crawl_time=datetime.now(),
+                crawl_time=crawl_time,
             )
+            # print(product.__dict__)
             product_id = product.save()
-            # download_image(product_image, product_id)
-
         # add next page to queue
-        next_link = page.find("li", "a-last")
-        next_page = next_link.find("a")
-        new_link = next_page["href"]
-        # if next_link:
-        log(" Found 'Next' link on {}: {}".format(url, new_link))
-        enqueue_url(new_link)
-        a = pile.spawn(fetch_listing)
-        print(a)
-    except Exception as exp:
-        log(exp)
+        next_link_1 = page.find("li", "a-last")
+        next_link = next_link_1.find("a")
+        # print("==============++++++++++++++++++++++=",next_link["href"])
+        if next_link:
+            log(" Found 'Next' link on {}: {}".format(url, next_link["href"]))
+            enqueue_url(next_link["href"])
+            pile.spawn(fetch_listing)
+    except Exception:
+        # print(Exception)
+        pass
 
 
 if __name__ == "__main__":
