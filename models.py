@@ -6,7 +6,7 @@ conn = psycopg2.connect(
     database=settings.database,
     host=settings.host,
     user=settings.user,
-    password="16Sofi@99",
+    password="",
 )
 cur = conn.cursor()
 
