@@ -1,30 +1,35 @@
-# Amazon Crawler
-A relatively simple amazon.com crawler written in python. It has the following features:
+# Amazon Category Crawler and Product Detail Extractor
+amazon.com crawler written in python with following features:
 
- * supports hundreds of simultaneous requests, depending on machine's limits
- * supports using proxy servers
- * supports scaling to multiple machines orchestrating the crawl and keeping in sync
- * can be paused and restarted without losing its place
+ * simultaneous requests and multithreading, number of threads can be changed from settings.py
+ * rotates proxy servers from proxy pool
+ * uses Redis to queue URL for requests, so the process can be continued if the run stops
  * logs progress and warning conditions to a file for later analysis
+ * in case a page link is not responding or is detected for bot usage, bitlyshortener api is used to shorten the link to get rid of tailing parameters and request is retried. 
 
-It was used to pull over 1MM+ products and their images from amazon in a few hours. [Read more]().
+
 
 ## Getting it Setup
-After you get a copy of this codebase pulled down locally (either downloaded as a zip or git cloned), you'll need to install the python dependencies:
+To run for a single item code, e.g. "B07Y91T141"
 
-    pip install -r requirements.txt
+    python detail_extractor.py
 
-Then you'll need to go into the `settings.py` file and update a number of values:
+To run on a category of items
 
- * **Database Name, Host and User** - Connection information for storing products in a postgres database
+    python crawler.py
+
+
+`settings.py` has configurations for the followings:
+
+ * **Database Name, Host and User** - Connection information for storing products in a postgres database (stores data taken from browsing page)
  * **Redis Host, Port and Database** - Connection information for storing the URL queue in redis
  * **Proxy List as well as User, Password and Port** - Connection information for your list of proxy servers
+ * **MongoDB Server, Port, DB name and Collection** - Connection information for storing product details in a mongodb document
+ * **Start file information** - Path for a .txt file which contains links of categories
+ * **Headers and Random User-Agent** - Updates headers with new random User-Agent for each request
+ * **Number of threads, limit of requests and entries per listing** - Can be configured to meet the needs of scraping logic
 
-Once you've updated all of your connection information, you'll need to run the following at the command line to setup the postgres table that will store the product records:
-
-    python models.py
-
-The fields that are stored for each product are the following:
+The fields that are stored for each product from browsing page are the following:
 
  * title
  * product_url *(URL for the detail page)*
@@ -33,30 +38,47 @@ The fields that are stored for each product are the following:
  * primary_img *(the URL to the full-size primary product image)*
  * crawl_time *(the timestamp of when the crawl began)*
 
+The fields that are stored for each product from product page are the following:
+ * Item id *(Unique for each item in Amazon)*
+ * Shipping Message
+ * Item Features
+ * Item Color
+ * Seller Name 
+ * Item Input Id
+ * Item attributes
+ * Shipping Price
+ * Item Title
+ * Seller Id *(Id of a seller found in Amazon)*
+ * Related products' asins
+ * Store Name
+ * Deal of the day *(True or False flag)*
+ * Item Specific information
+ * Price
+ * Brand
+ * Response Received *(Time when request was received)*
+ * Proxy *(Proxy ip address)*
+ * Categories *(Categories under which item is located)*
+ * Manufacturer 
+ * Images *(All images of product)*
+ * Start Request *(Time when the request was sent)
+ * Get variations *(Item attribute variations)*
+ * URL
+ * Before Deal Price *(Applicable if the item's price is discounted, otherwise returns 'None')*
+ * Category Id *(Subcategory id)*
+ * Order min qty *(Minimum quantity to order the item)*
+
 ## How it Works
-You begin the crawler for the first time by running:
 
-    python crawler.py start
+    python crawler.py 
 
-This runs a function that looks at all of the category URLs stored in the `start-urls.txt` file, and then explodes those out into hundreds of subcategory URLs it finds on the category pages. Each of these subcategory URLs is placed in the redis queue that holds the frontier listing URLs to be crawled.
+This runs a function that crawls subcategories of a category URLs stored in the `start-urls.txt` file. Each of these subcategory URLs is placed in the redis queue that holds the frontier listing URLs to be crawled.
 
-Then the program spins up the number of threads defined in `settings.max_threads` and each one of those threads pops a listing URL from the queue, makes a request to it and then stores the (usually) 10-12 products it finds on the listing page. It also looks for the "next page" URL and puts that in the queue.
+Then the program takes number of threads defined in `settings.max_threads` and each one of those threads pops a listing URL from the queue, makes a request to it and then stores the products found on the listing page. Also takes the "next page" URL and puts that in the queue.
 
-### Restarting the crawler
-If you're restarting the crawler and don't want it to go back to the beginning, you can simply run it with
-
-    python crawler.py
-
-This will skip the step of populating the URL queue with subcategory links, and assumes that there are already URLs stored in redis from a previous instance of the crawler.
-
-This is convenient for making updates to crawler or parsing logic that only affect a few pages, without going back to the beginning and redoing all of your previous crawling work.
-
-### Piping Output to a Logfile
-If you'd like to redirect the logging output into a logfile for later analysis, run the crawler with:
-
-    python crawler.py [start] > /var/log/crawler.log
 
 ## Known Limitations
-Amazon uses many different styles of markup depending on the category and product type. This crawler focused mostly on the "Music, Movies & Games" category as well as the "Sports & Outdoors" category.
+Amazon uses different styles of markup depending on the category and product type, thus some category items can not be found using the lookup in extractors. 
 
-The extractors for finding product listings and their details will likely need to be changed to crawl different categories, or as the site's markup changes over time.
+Proxy servers are public which sometimes slows down the requests.
+
+Received HTML is checked and if it misses crucial information request is retried for number of times defined in `sys.setrecursionlimit` argument. 

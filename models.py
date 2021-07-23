@@ -1,5 +1,8 @@
-import psycopg2
+"""
+Creates PostgreSQL database to store category's paging product information
+"""
 
+import psycopg2
 import settings
 
 conn = psycopg2.connect(
@@ -40,7 +43,6 @@ class ProductRecord(object):
 
 
 if __name__ == "__main__":
-
     # setup tables
     cur.execute("DROP TABLE IF EXISTS products")
     cur.execute(

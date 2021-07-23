@@ -1,6 +1,10 @@
-from html.parser import HTMLParser
+import logging
 
-htmlparser = HTMLParser()
+
+import settings
+
+
+logging.basicConfig(filename=settings.log_name, filemode="a", level=logging.DEBUG)
 
 
 def get_title(item):
@@ -9,35 +13,32 @@ def get_title(item):
             "h2", "a-size-mini a-spacing-none a-color-base s-line-clamp-4"
         )
         if title:
-            # return htmlparser.unescape(title.text.encode("utf-8"))
             return title.text
         else:
             return "<missing product title>"
-    except:
-        pass
+    except Exception as exc:
+        logging.exception(exc)
 
 
 def get_url(item):
     try:
         link = item.find("a", "a-link-normal s-no-outline")
         if link:
-            # print(link["href"])
             return link["href"]
         else:
             return "<missing product url>"
-    except:
-        pass
+    except Exception as exc:
+        logging.exception(exc)
 
 
 def get_price(item):
     try:
         price = item.find("span", "a-offscreen")
         if price:
-            # print(price.text)
             return price.text
         return "Nan="
-    except:
-        pass
+    except Exception as exc:
+        logging.exception(exc)
 
 
 def get_primary_img(item):
@@ -51,5 +52,5 @@ def get_primary_img(item):
             ext = p2[-1]
             return "/".join(p1[:-1]) + "/" + base + "." + ext
         return "Non"
-    except:
-        pass
+    except Exception as exc:
+        logging.exception(exc)
